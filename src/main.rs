@@ -25,6 +25,10 @@ const HEIGHT: usize = 640;
 static RATIO: f32 = 1.0 / 0xFFFFFFFFu32 as f32;
 static mut T: f32 = 0.0;
 
+fn to_radians(value: f32) -> f32 {
+    value * (std::f32::consts::TAU / 360.0)
+}
+
 struct Bitmap {
     width:  usize,
     height: usize,
@@ -73,6 +77,7 @@ impl FourRandomColours {
 struct StarField {
     perspective_on_x: bool,
     perspective_on_y: bool,
+    tan_half_fov:     f32,
     star_count:       usize,
     star_speed:       f32,
     star_spread:      f32,
@@ -90,8 +95,9 @@ impl StarField {
         let mut field = Self {
             perspective_on_x: true,
             perspective_on_y: true,
+            tan_half_fov:     f32::tan(to_radians(30.0 * 0.5)),
             star_count:       16384,
-            star_speed:       5.0,
+            star_speed:       3.0,
             star_spread:      16.0,
             phase_speed:      64.0,
             star_x:           ptr::null_mut(),
@@ -194,6 +200,7 @@ impl StarField {
 
             let zero_epi32 = _mm_set1_epi32(0);
             let half_ps = _mm_set1_ps(0.5);
+            let half_fov_ps = _mm_set1_ps(self.tan_half_fov);
 
             let width_epi32 = _mm_set1_epi32(target.width as i32);
             let height_epi32 = _mm_set1_epi32(target.height as i32);
@@ -213,10 +220,12 @@ impl StarField {
 
                 _mm_storeu_ps(z_addr, z);
 
+                let perspective = _mm_mul_ps(z, half_fov_ps);
+
                 let screen_x = _mm_cvtps_epi32(_mm_add_ps(
                     _mm_mul_ps(
                         if self.perspective_on_x {
-                            _mm_div_ps(x, z)
+                            _mm_div_ps(x, perspective)
                         } else {
                             x
                         },
@@ -228,7 +237,7 @@ impl StarField {
                 let screen_y = _mm_cvtps_epi32(_mm_add_ps(
                     _mm_mul_ps(
                         if self.perspective_on_y {
-                            _mm_div_ps(y, z)
+                            _mm_div_ps(y, perspective)
                         } else {
                             y
                         },
