@@ -1,13 +1,11 @@
 #![feature(stdsimd)]
 
-use core::arch::x86_64::*;
 use std::{
     alloc::{alloc, dealloc, Layout},
-    arch::x86_64::_mm_set_ps,
+    arch::x86_64::*,
     intrinsics::transmute,
     mem::{align_of, size_of},
-    ptr,
-    ptr::write_bytes,
+    ptr::{self, write_bytes},
     time::Instant,
 };
 
